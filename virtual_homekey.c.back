@@ -1,0 +1,99 @@
+#include <linux/input.h>
+#include <linux/miscdevice.h>
+#include <linux/fs.h>
+#include <linux/module.h>
+#include <linux/init.h>
+
+#include <asm/io.h>
+
+static struct input_dev *homekey_dev;
+
+static int homekey_open(struct inode *inode, struct file *file){
+	printk("homekey file open\n");
+	return 0;
+}
+
+static int homekey_close(struct inode *inode, struct file *file){		
+	printk("homekey file close\n");
+	return 0;
+}
+
+static ssize_t homekey_click(struct file *file, const char __user *buf, size_t len, loff_t *ppos){
+	printk("homekey click\n");
+
+	input_report_key(homekey_dev, BTN_0, 1);
+	input_sync(homekey_dev);
+	return len;
+}
+
+static ssize_t homekey_click2(struct file *file, char __user *buf, size_t lbuf, loff_t *ppos){
+
+	printk("homekey click2\n");
+	input_report_key(homekey_dev, BTN_0, 1);
+	input_sync(homekey_dev);
+	return lbuf;
+}
+
+
+static const struct file_operations homekey_fops = {
+	.owner	= THIS_MODULE,
+	.write	= homekey_click,
+	.read	= homekey_click2,
+	.open	= homekey_open,
+	.release	=homekey_close,
+	.llseek		=no_llseek, 
+};
+
+struct miscdevice homekey_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "homekey",
+	.fops = &homekey_fops,
+};
+
+static int __init homekey_init(void)
+{
+	int error;
+
+	error = misc_register(&homekey_device);
+	if(error){
+		printk("can't register misc device :(\n");
+		return error;
+	}
+
+	homekey_dev = input_allocate_device();
+	if (!homekey_dev) {
+		printk(KERN_ERR "button.c: Not enough memory\n");
+		error = -ENOMEM;
+		goto err;
+	}
+	printk("input_allocate_device() success\n");
+	homekey_dev->evbit[0] = BIT_MASK(EV_KEY);
+	homekey_dev->keybit[BIT_WORD(BTN_0)] = BIT_MASK(BTN_0);
+
+	error = input_register_device(homekey_dev);
+	if (error) {
+		printk(KERN_ERR "button.c: Failed to register device\n");
+		goto err_free_dev;
+	}
+	printk("input_register_device success\n");
+	return 0;
+
+ err_free_dev:
+	input_free_device(homekey_dev);
+err:
+	return error;
+}
+
+static void __exit homekey_exit(void)
+{
+
+	misc_deregister(&homekey_device);
+        input_unregister_device(homekey_dev);
+}
+
+module_init(homekey_init);
+module_exit(homekey_exit);
+
+MODULE_DESCRIPTION("Simple homekey device as misc device");
+MODULE_AUTHOR("Hyukjoong Kim <wangmir@gmail.com>");
+MODULE_LICENSE("GPLv2");
