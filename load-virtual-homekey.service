@@ -1,0 +1,10 @@
+[Unit]
+Description=Load virtual homekey driver kernel module
+Before=remote-key-framework.service
+
+[Service]
+ExecStart=/sbin/insmod /data/virtual_homekey.ko
+Type=oneshot
+
+[Install]
+WantedBy=graphical.target
