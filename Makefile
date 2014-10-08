@@ -8,5 +8,5 @@ all:
 
 clean:
 	$(MAKE) -C $(KDIR) M=${shell pwd} clean || true
-	-rm *.p *.ko *.mode.{c,o} modules.order Module.symvers || true
+	-rm *.o *.ko *.mod.c *.mod.o modules.order Module.symvers || true
 
